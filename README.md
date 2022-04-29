@@ -5,12 +5,14 @@
 # Testing Framework
 
 ## what
-parameter und reporting, variable protokol - ligo/smartpy
-- output in json für uf webeite publizieren
+testing framework for running and defining tests to run angainst different protocol versions of tezos.
+Protable with a minimal Python environment and an extensiv config file.
+Reporting with json.
+Accessible with an automated setup.
+
 
 ## how
 cli to interact with the script and config editing with text editors
-
 workflow should be: start script with one of sevral options
 
 $ python3 my_script.py --init
