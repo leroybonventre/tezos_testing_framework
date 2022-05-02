@@ -1,0 +1,1 @@
+{"bin_paths": [{"tezos-client": "/home/leroy/PycharmProjects/tezos_testing_framework/workspace/tezos-client"}, {"SmartPy": ""}, {"LIGO": ""}], "endpoints": ["https://ithacanet.smartpy.io", "https://mainnet.smartpy.io"], "tests": [], "accounts": []}
