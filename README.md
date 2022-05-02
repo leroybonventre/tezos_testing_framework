@@ -13,12 +13,12 @@ Accessible with an automated setup.
 
 ## setup
 
-git clone URL
-cd tezos_testing_framework
-python3 -m venv
-sudo apt install python3-pip
-pip install requests pathlib validators
-source venv/bin/activate
+	git clone URL
+	cd tezos_testing_framework
+	python3 -m venv
+	sudo apt install python3-pip
+	pip install requests pathlib validators
+	source venv/bin/activate
 
 
 
