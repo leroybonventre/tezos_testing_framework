@@ -11,6 +11,17 @@ Reporting with json.
 Accessible with an automated setup.
 
 
+## setup
+'''bash
+git clone URL
+cd tezos_testing_framework
+python3 -m venv
+sudo apt install python3-pip
+pip install requests pathlib validators
+source venv/bin/activate
+'''
+
+
 ## how
 cli to interact with the script and config editing with text editors
 workflow should be: start script with one of sevral options
