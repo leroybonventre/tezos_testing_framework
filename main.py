@@ -3,14 +3,40 @@ import requests
 import pathlib
 import json
 import validators
+import stat
 
 workspace = pathlib.Path().resolve() / "workspace"
 pathlib.Path(workspace).mkdir(parents=True, exist_ok=True)
 
 
-def edit_config(operation, node, key_to_modify, value):
+def get_config():
     with open('workspace/config.json', 'r') as json_file:
-        data = json.load(json_file)
+        return json.load(json_file)
+
+
+def get_config_value(data, search_key):
+    my_return = ''
+    for top_level in data:
+        if type(top_level) == type(search_key):
+            if top_level == search_key:
+                return data[top_level]
+            else:
+                my_return = get_config_value(data[top_level], search_key)
+                if my_return != '':
+                    return my_return
+        else:
+            if type(top_level) == dict:
+                for key in top_level.keys():
+                    if key == search_key:
+                        return top_level.get(key)
+            my_return = get_config_value(data[top_level], search_key)
+            if my_return != '':
+                return my_return
+    return my_return
+
+
+def edit_config(operation, node, key_to_modify, value):
+    data = get_config()
 
     if operation == 'add':
         for entry in data:
@@ -23,61 +49,6 @@ def edit_config(operation, node, key_to_modify, value):
                         for key in my_keys:
                             if key == key_to_modify:
                                 item.update({key: value})
-
-    '''
-    
-        current_key = node_list[0]
-
-        if current_key in data.keys():
-            pass
-        data_keys = data.keys()
-        for key in data:
-            if key == node_list:
-                pass
-    '''
-    '''
-    
-    for node_list_index, node in enumerate(node_list):
-        for entry in data:
-            node_list_index += 1
-            for item in data[entry]:
-                my_key = item.keys()
-                if my_key == node_list[node_list_index]:
-                    pass
-    '''
-    '''
-    if entry == node_list[node_list_index]:
-        pass
-    else:
-        node_list_index += 1
-        break
-    if operation == 'add':
-        for idx, item in enumerate(data):
-            if node_list[idx] in item:
-                for idx2, entry in enumerate(data[item]):
-                    index_of_key = data[item].index(entry)  # .update({"tezos-client": value})
-                    for x in data[item]:
-                        x.update({"tezos-client": value})
-
-    '''
-    '''
-    
-    if operation == 'add':
-        counter = 0
-        for item in node_list:
-            counter += 1
-            if len(node_list) > counter:
-                if item in data.keys():
-                    continue
-            else:
-                print(data[node_list])
-                for entry in data[node_list]:
-                    test = data[entry].keys()
-                    print(test)
-
-               # node_to_add = data[node_list[counter]]
-                #print(node_to_add)
-    '''
 
     if operation == 'remove':
         pass
@@ -100,6 +71,9 @@ def download_bins(indexes_to_download):
                 # ToDo: check response for errors
                 with open(tezos_client_path, 'wb') as tez:
                     tez.write(response.content)
+                # make bin executable
+                tezos_client_path.chmod(tezos_client_path.stat().st_mode | stat.S_IEXEC)
+
             edit_config("add", "bin_paths", "tezos-client", str(tezos_client_path))
         elif download_index == "2":
             print("downloaded SmartPy")
@@ -108,7 +82,6 @@ def download_bins(indexes_to_download):
         else:
             print("could not download for index: {index}".format(index=download_index))
             break
-        download_unsuccessful = False
     return download_unsuccessful
 
 
@@ -117,7 +90,7 @@ if __name__ == "__main__":
     args = [arg for arg in sys.argv[1:] if not arg.startswith("--")]
 
     # debug:
-    options.append("--init")
+    options.append("--start")
 
     if "--init" in options:
 
@@ -188,16 +161,51 @@ if __name__ == "__main__":
                 if len(node_url):
                     for url in node_url:
                         edit_config("add", "endpoints", False, url)
-
                     node_selection_unsuccessful = False
-
         # end:  while node_selection_unsuccessful
 
         accounts_selection_unsuccessful = True
         while accounts_selection_unsuccessful:
-            pass
+            accounts_selection_unsuccessful = False
+
+    # end: --init
 
     elif "--start" in options:
+        start_unsuccessful = True
+        while start_unsuccessful:
+            # check config
+            config_path = workspace / "config.json"
+            if config_path.is_file():
+                with open('workspace/config.json', 'r') as json_file:
+                    data = json.load(json_file)
+                start_unsuccessful = False
+            else:
+                print("no config")
+
+            # ToDo: check env
+
+            # check installation paths
+            for entry in data["bin_paths"]:
+                for path in entry.values():
+                    if path == '':
+                        pass
+                    else:
+                        path_to_check = pathlib.Path(path)
+                        if path_to_check.is_file():
+                            start_unsuccessful = False
+                        else:
+                            print("file {entry} does not exist!".format(entry=entry))
+                            start_unsuccessful = True
+
+            # check node availability
+
+            json_data = get_config()
+            tezos_bin_path = get_config_value(json_data, "tezos-client")
+            for entry in data["endpoints"]:
+                for url in entry.values():
+                    pass
+                    # use tezos to check url with requests
+
         '''
         1. load config
         2. check env
