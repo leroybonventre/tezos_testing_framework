@@ -1,3 +1,4 @@
+import subprocess
 import sys
 import requests
 import pathlib
@@ -8,27 +9,54 @@ import stat
 workspace = pathlib.Path().resolve() / "workspace"
 pathlib.Path(workspace).mkdir(parents=True, exist_ok=True)
 
+'''
+func run_cmd (string_of_cmd, string_expected_output, save_output_location)
+    cmd to list
+    run cmd
+    evaluate if cmd was run successfully, programmatically
+    show user the output and let them decide if its correct
+    ??? parse output and search for expected_output
+    save output of ran cmd
+                
+my_var = subprocess.run(['ls', '-l'], stdout=subprocess.PIPE).stdout.decode('utf-8')
+https://github.com/ant4g0nist/chinstrap/blob/c55dd67f6422c9b7e0497b9ea3239489bf6e2b7a/chinstrap/chinstrapCore/__init__.py#L265
+'''
+
+
+def run_line(config_data, string_of_cmd, string_expected_output, save_output_location):
+    list_of_cmd = string_of_cmd.split(' ', -1)
+    if list_of_cmd[0] not in {'tezos-client', 'SmartPy', 'LIGO'}:
+        print('invalid command! Command can not start with: {first_cmd}'.format(first_cmd=list_of_cmd[0]))
+    else:
+        if list_of_cmd[0] == 'tezos-client':
+            list_of_cmd[0] = get_config_value(config_data, "tezos-client")
+        my_var = subprocess.run(list_of_cmd, stdout=subprocess.PIPE).stdout.decode('utf-8')
+        print(my_var)
+
 
 def get_config():
-    with open('workspace/config.json', 'r') as json_file:
-        return json.load(json_file)
+    with open('workspace/config.json', 'r') as file:
+        return json.load(file)
 
 
-def get_config_value(data, search_key):
+def get_config_value(search_data, search_key):
     my_return = ''
-    for top_level in data:
+    for top_level in search_data:
         if type(top_level) == type(search_key):
             if top_level == search_key:
-                return data[top_level]
+                return search_data[top_level]
             else:
-                my_return = get_config_value(data[top_level], search_key)
+                my_return = get_config_value(search_data[top_level], search_key)
                 if my_return != '':
                     return my_return
+        # ToDo: check for list to shorten this
         else:
             if type(top_level) == dict:
                 for key in top_level.keys():
                     if key == search_key:
                         return top_level.get(key)
+                    else:
+                        return ""
             my_return = get_config_value(data[top_level], search_key)
             if my_return != '':
                 return my_return
@@ -36,20 +64,21 @@ def get_config_value(data, search_key):
 
 
 def edit_config(operation, node, key_to_modify, value):
-    data = get_config()
+    config_data = get_config()
 
     if operation == 'add':
-        for entry in data:
-            if entry == node:
+        for config_entry in config_data:
+            if config_entry == node:
                 if not key_to_modify:
-                    data[entry].append(value)
+                    config_data[config_entry].append(value)
                 else:
-                    for item in data[entry]:
+                    for item in config_data[config_entry]:
                         my_keys = item.keys()
                         for key in my_keys:
                             if key == key_to_modify:
                                 item.update({key: value})
 
+    # ToDo: account for more operations in order to edit tests and test-accounts
     if operation == 'remove':
         pass
 
@@ -63,11 +92,13 @@ def download_bins(indexes_to_download):
         if download_index == "1":
             tezos_client_path = workspace / "tezos-client"
             if tezos_client_path.is_file():
-                print("WARNING: tezos-client at path {tezos_client_path} already exists, not downloading".format(tezos_client_path=tezos_client_path))
+                print("WARNING: tezos-client at path {tezos_client_path} already exists, not downloading".format(
+                    tezos_client_path=tezos_client_path))
                 download_unsuccessful = False
             else:
                 print("INFO: downloading tezos-client")
-                response = requests.get("https://github.com/serokell/tezos-packaging/releases/latest/download/tezos-client")
+                response = requests.get(
+                    'https://github.com/serokell/tezos-packaging/releases/latest/download/tezos-client')
                 # ToDo: check response for errors
                 with open(tezos_client_path, 'wb') as tez:
                     tez.write(response.content)
@@ -85,12 +116,12 @@ def download_bins(indexes_to_download):
     return download_unsuccessful
 
 
+# ToDo: add verbose output
 if __name__ == "__main__":
     options = [opt for opt in sys.argv[1:] if opt.startswith("--")]
     args = [arg for arg in sys.argv[1:] if not arg.startswith("--")]
 
-    # debug:
-    options.append("--start")
+    # debug: options.append("--start")
 
     if "--init" in options:
 
@@ -108,7 +139,8 @@ if __name__ == "__main__":
             with open('workspace/config.json', 'w') as config:
                 config.write(json.dumps(empty_config))
 
-# ###################### bin
+        # 3 things need to be done: select bin path, select a node, setup an account
+
         bin_selection_unsuccessful = True
         while bin_selection_unsuccessful:
             print("Select what to download: 1) tezos-client, 2) SmartPy, 3) LIGO")
@@ -132,12 +164,14 @@ if __name__ == "__main__":
             if len(bin_indexes) > 0:
                 bin_selection_unsuccessful = download_bins(bin_indexes)
 
+        # end:  while bin_selection_unsuccessful
 
-# ###################### node
         node_selection_unsuccessful = True
         while node_selection_unsuccessful:
-            print("Select what node to connect to: 1) ithacanet.smartpy.io, 2) mainnet.smartpy.io, 3) local or custom input")
-            selection = input('INFO: e.g. 1,2 or "https://ithacanet.smartpy.io","https://mainnet.smartpy.io" or "https://custom_node.com": ')
+            print(
+                "Select what node to connect to: 1) ithacanet.smartpy.io, 2) mainnet.smartpy.io, 3) local or custom input")
+            selection = input(
+                'INFO: e.g. 1,2 or "https://ithacanet.smartpy.io","https://mainnet.smartpy.io" or "https://custom_node.com": ')
             node_selection = selection.split(",")
             if len(node_selection) == 0:
                 print("WARNING: invalid input")
@@ -164,9 +198,11 @@ if __name__ == "__main__":
                     node_selection_unsuccessful = False
         # end:  while node_selection_unsuccessful
 
+        # ToDo:
         accounts_selection_unsuccessful = True
         while accounts_selection_unsuccessful:
             accounts_selection_unsuccessful = False
+        # end:  while accounts_selection_unsuccessful
 
     # end: --init
 
@@ -201,10 +237,19 @@ if __name__ == "__main__":
 
             json_data = get_config()
             tezos_bin_path = get_config_value(json_data, "tezos-client")
-            for entry in data["endpoints"]:
-                for url in entry.values():
-                    pass
-                    # use tezos to check url with requests
+            endpoints = get_config_value(json_data, "endpoints")
+            for url in endpoints:
+                pass
+                # $TEZOSCLIENT transfer 1 from deploy to KT1PWx2mnDueood7fEmfbBDKx1D9BAnnXitn
+                # run_line(json_data, )
+                '''
+                response = requests.get(url)
+                if response.status_code != 200:
+                    start_unsuccessful = True
+                    print("endpoint: {current_endpoint} not reachable! aborting".format(current_endpoint=url))
+                    break
+                # use tezos to check url with requests
+                '''
 
         '''
         1. load config
@@ -215,7 +260,14 @@ if __name__ == "__main__":
         6. report failed test(s) as output
         '''
         print(" ".join(arg.upper() for arg in args))
+
+    # end: --start
+
+    # ToDo:
     elif "--add" in options:
         print(" ".join(arg.lower() for arg in args))
+
+    # end: --add
+
     else:
         raise SystemExit(f"Usage: {sys.argv[0]} ( --init | --start | --add ) <arguments>")
