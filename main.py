@@ -9,34 +9,52 @@ import stat
 workspace = pathlib.Path().resolve() / "workspace"
 pathlib.Path(workspace).mkdir(parents=True, exist_ok=True)
 
-'''
-func run_cmd (string_of_cmd, string_expected_output, save_output_location)
-    cmd to list
-    run cmd
-    evaluate if cmd was run successfully, programmatically
-    show user the output and let them decide if its correct
-    ??? parse output and search for expected_output
-    save output of ran cmd
-                
-my_var = subprocess.run(['ls', '-l'], stdout=subprocess.PIPE).stdout.decode('utf-8')
-https://github.com/ant4g0nist/chinstrap/blob/c55dd67f6422c9b7e0497b9ea3239489bf6e2b7a/chinstrap/chinstrapCore/__init__.py#L265
-'''
+
+def insert_options(list_of_cmd, list_to_insert, starting_position=0, replace=False):
+    for value in list_to_insert:
+        if replace:
+            list_of_cmd[starting_position] = value
+        else:
+            list_of_cmd.insert(starting_position, value)
+    return list_of_cmd
 
 
 def run_line(config_data, string_of_cmd, string_expected_output, save_output_location):
+    """ running a test from the config. returns True if the test passed without errors and interception """
+    # ToDo: read cli params form the current test's config
+
     list_of_cmd = string_of_cmd.split(' ', -1)
-    if list_of_cmd[0] not in {'tezos-client', 'SmartPy', 'LIGO'}:
+    if list_of_cmd[0] not in {'tezos-client', 'SmartPy', 'LIGO'}: # change this to list from config "bin_paths"
         print('invalid command! Command can not start with: {first_cmd}'.format(first_cmd=list_of_cmd[0]))
     else:
         if list_of_cmd[0] == 'tezos-client':
-            list_of_cmd[0] = get_config_value(config_data, "tezos-client")
-        my_var = subprocess.run(list_of_cmd, stdout=subprocess.PIPE).stdout.decode('utf-8')
-        print(my_var)
+            # ToDo: wtf is this mess, who did this?
+            my_list = [str(get_config_value(config_data, 'tezos-client'))]
+            list_of_cmd = insert_options(list_of_cmd, my_list, 0, True)
+            list_of_cmd = insert_options(list_of_cmd, ['-E'], 1, False)
+            list_of_cmd = insert_options(list_of_cmd, ['{endpoint}'.format(endpoint=get_config_value(config_data, 'endpoints')[0])], 2, False)
+            print("list_of_cmd: ")
+            print(list_of_cmd)
+            result = subprocess.run(list_of_cmd, capture_output=True, text=True)
+            if result.returncode > 0:
+                # ToDo: better output of the ran command with parameter
+                print("got errors running: '{string_of_cmd}'".format(string_of_cmd=string_of_cmd))
+                print(result)
+                print(result.stderr)
+                return False
+            else:
+                return True
 
 
 def get_config():
-    with open('workspace/config.json', 'r') as file:
-        return json.load(file)
+    """ reads the config and returns it """
+    try:
+        with open('workspace/config.json', 'r') as config_file:
+            return json.load(config_file)
+    except FileNotFoundError as e:
+        print("ERROR: could not open file 'workspace/config.json', stopping!")
+        print(e)
+        sys.exit()
 
 
 def get_config_value(search_data, search_key):
@@ -83,7 +101,7 @@ def edit_config(operation, node, key_to_modify, value):
         pass
 
     with open('workspace/config.json', 'w') as outfile:
-        json.dump(data, outfile)
+        json.dump(config_data, outfile)
 
 
 def download_bins(indexes_to_download):
@@ -94,7 +112,6 @@ def download_bins(indexes_to_download):
             if tezos_client_path.is_file():
                 print("WARNING: tezos-client at path {tezos_client_path} already exists, not downloading".format(
                     tezos_client_path=tezos_client_path))
-                download_unsuccessful = False
             else:
                 print("INFO: downloading tezos-client")
                 response = requests.get(
@@ -106,6 +123,7 @@ def download_bins(indexes_to_download):
                 tezos_client_path.chmod(tezos_client_path.stat().st_mode | stat.S_IEXEC)
 
             edit_config("add", "bin_paths", "tezos-client", str(tezos_client_path))
+            download_unsuccessful = False
         elif download_index == "2":
             print("downloaded SmartPy")
         elif download_index == "3":
@@ -121,7 +139,8 @@ if __name__ == "__main__":
     options = [opt for opt in sys.argv[1:] if opt.startswith("--")]
     args = [arg for arg in sys.argv[1:] if not arg.startswith("--")]
 
-    # debug: options.append("--start")
+    # debug:
+    options.append("--init")
 
     if "--init" in options:
 
@@ -139,10 +158,13 @@ if __name__ == "__main__":
             with open('workspace/config.json', 'w') as config:
                 config.write(json.dumps(empty_config))
 
+        config_data = get_config()
+
         # 3 things need to be done: select bin path, select a node, setup an account
 
         bin_selection_unsuccessful = True
         while bin_selection_unsuccessful:
+            print()
             print("Select what to download: 1) tezos-client, 2) SmartPy, 3) LIGO")
             bin_selection = input("INFO: e.g. 1,2,3 to download them all: ")
             bin_indexes = []
@@ -168,6 +190,7 @@ if __name__ == "__main__":
 
         node_selection_unsuccessful = True
         while node_selection_unsuccessful:
+            print()
             print(
                 "Select what node to connect to: 1) ithacanet.smartpy.io, 2) mainnet.smartpy.io, 3) local or custom input")
             selection = input(
@@ -193,23 +216,78 @@ if __name__ == "__main__":
                             break
 
                 if len(node_url):
+                    current_endpoints = get_config_value(config_data, 'endpoints')
                     for url in node_url:
+                        if url in current_endpoints:
+                            continue
                         edit_config("add", "endpoints", False, url)
                     node_selection_unsuccessful = False
         # end:  while node_selection_unsuccessful
 
-        # ToDo:
+        # ToDo: maybe later save the content of the account json into the config
         accounts_selection_unsuccessful = True
         while accounts_selection_unsuccessful:
-            accounts_selection_unsuccessful = False
+            print()
+            print('Testnet accounts can be created at: https://teztnets.xyz')
+            print('absolut path to the account json file')
+            path_to_check = input("INFO: e.g. account1.json or /home/leroy/Documents/account1.json: ")
+            path_to_check = pathlib.Path(path_to_check)
+            account_name = ''
+            if path_to_check.is_file():
+                current_account = {}
+                with open(path_to_check, 'r') as file:
+                    new_account = json.load(file)
+                account_name = path_to_check.stem
+                add_account = False
+                if len(config_data['accounts']) == 0:
+                    add_account = True
+                else:
+                    for counter, account in enumerate(config_data['accounts']):
+                        if list(account.keys())[counter] == account_name:
+                            print("WARNING: account with the name '{account}' already exists, not adding a new one!".format(account=account_name))
+                            continue
+                        else:
+                            add_account = True
+
+                if add_account:
+                    current_account[account_name] = new_account
+                    edit_config("add", "accounts", False, current_account)
+
+            else:
+                print("ERROR: '{path_to_check}' does not exist, try again!".format(path_to_check=path_to_check))
+                continue
+
+            account_activation_results = []
+            for account in config_data['accounts']:
+                account_values = json.dumps(account.get(account_name))
+                account_values = account_values.replace(" ", "")
+                line_to_run = "tezos-client activate account {account_name} with {account_values}".format(account_name=account_name, account_values=account_values)
+                result = run_line(config_data, line_to_run, '', '')
+                account_activation_results.append(result)
+
+            if False in account_activation_results:
+                pass
+            else:
+                accounts_selection_unsuccessful = False
         # end:  while accounts_selection_unsuccessful
+
+        '''
+        config_init_unsuccessful = True
+        while config_init_unsuccessful:
+            line_to_run = '{}'.format()
+            result = run_line(config_data, line_to_run, '', '')
+
+        '''
+        # end:  while config_init_unsuccessful
+        # ToDo: "config init" and test the config
 
     # end: --init
 
     elif "--start" in options:
         start_unsuccessful = True
         while start_unsuccessful:
-            # check config
+
+            # ToDo: check env, accounts,
             config_path = workspace / "config.json"
             if config_path.is_file():
                 with open('workspace/config.json', 'r') as json_file:
@@ -218,9 +296,6 @@ if __name__ == "__main__":
             else:
                 print("no config")
 
-            # ToDo: check env
-
-            # check installation paths
             for entry in data["bin_paths"]:
                 for path in entry.values():
                     if path == '':
@@ -231,7 +306,6 @@ if __name__ == "__main__":
                             start_unsuccessful = False
                         else:
                             print("file {entry} does not exist!".format(entry=entry))
-                            start_unsuccessful = True
 
             # check node availability
 
@@ -241,7 +315,7 @@ if __name__ == "__main__":
             for url in endpoints:
                 pass
                 # $TEZOSCLIENT transfer 1 from deploy to KT1PWx2mnDueood7fEmfbBDKx1D9BAnnXitn
-                # run_line(json_data, )
+                run_line(json_data, "tezos-client transfer 1 from account1 to account2", "", False)
                 '''
                 response = requests.get(url)
                 if response.status_code != 200:
