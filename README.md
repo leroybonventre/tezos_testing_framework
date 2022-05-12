@@ -17,7 +17,7 @@ Accessible with an automated setup.
 	cd tezos_testing_framework
 	python3 -m venv
 	sudo apt install python3-pip
-	pip install requests pathlib validators
+	pip install requests pathlib validators stat
 	source venv/bin/activate
 
 
@@ -57,89 +57,37 @@ $ python3 my_script.py --add "tezos-client transfer 1 from account1 to account2"
     . save to config
 
 ### example config
+    {
+        "bin_paths": [{
+            "tezos-client": "/home/leroy/PycharmProjects/tezos_testing_framework/workspace/tezos-client"
+        }, {
+            "SmartPy": ""
+        }, {
+            "LIGO": ""
+        }],
+        "endpoints": ["https://ithacanet.smartpy.io"],
+        "tests": [
+            {
+				"metadata": {
+					"name": "test1",
+					"create_date": "2022-01-01"
+				},
+				"bins": ["tezos-client"],
+				"test_string": ["tezos-client transfer 1 from account1 to account2"],
+				"accounts": ["account1", "account2"],
+				"endpoints": ["https://ithacanet.smartpy.io"]
+			}
+		],
+        "accounts": [{
+            "account1": {
+                "pkh": "tz1eCoue9XZMaAFtH4vAojGAGQWZ4sdN477E",
+                "mnemonic": ["whisper", "pulp", "skill", "elder", "foam", "social", "result", "wreck", "benefit", "sorry", "bicycle", "grunt", "exhaust", "oyster", "zebra"],
+                "email": "alhqrklc.gkhlwkom@teztnets.xyz",
+                "password": "7Cy6X2Juh1",
+                "amount": "11854920453",
+                "activation_code": "82c2b205e7a517eec8c0f2fd1fa4dd73ffa050b7"
+            }
+        }]
+    }
 
-{
-	"bin_paths": [{
-			"tezos-client": "/path/to/tezos-client"
-		},
-		{
-			"SmartPy": "/path/to/SmartPy"
-		},
-		{
-			"LIGO": "/path/to/LIGO"
-		}
-	],
-	"endpoints": ["https://ithacanet.smartpy.io"],
-	"tests": [{
-		"1": {
-			"metadata": {
-				"name": "test1",
-				"create_date": "2022-01-01"
-			},
-			"bins": ["tezos-client"],
-			"test_string": ["tezos-client transfer 1 from account1 to account2"],
-			"accounts": ["account1", "account2"],
-			"endpoints": ["https://ithacanet.smartpy.io"]
-		}
-	}],
-	"accounts": [{
-		"account1": {
-			"pkh": "tz1QwBdkjVdKeik5kv22TTsWHZKLYWGTsvcL",
-			"mnemonic": [
-				"night",
-				"jelly",
-				"among",
-				"voyage",
-				"lesson",
-				"video",
-				"chunk",
-				"clerk",
-				"illegal",
-				"occur",
-				"lift",
-				"goose",
-				"cover",
-				"scatter",
-				"inside"
-			],
-			"email": "wodoykkh.gwpkcgps@teztnets.xyz",
-			"password": "16J4kONKxi",
-			"amount": "77019740071",
-			"activation_code": "bd74e118df73e55b085f041e1f61a6aef1b54e10"
-		}
-	}, {
-		"account2": {
-			"pkh": "tz1MqUBgWxfpJgknGMiiJhupei3ZqdSynX39",
-			"mnemonic": [
-				"fan",
-				"uniform",
-				"borrow",
-				"student",
-				"method",
-				"sword",
-				"spray",
-				"two",
-				"acquire",
-				"cable",
-				"text",
-				"chest",
-				"exile",
-				"depart",
-				"where"
-			],
-			"email": "oqlecgnm.uwczdnpf@teztnets.xyz",
-			"password": "HvA2bf1bUZ",
-			"amount": "121999420072",
-			"activation_code": "ed0771d6b163cb1e819bd1520462e7f458be933a"
-		}
-	}]
-}
-
-
-### empty config
-{
-    "bin_paths": [],
-    "endpoints": [],
-    "tests": [],
-    "accounts": []
-}
+	
